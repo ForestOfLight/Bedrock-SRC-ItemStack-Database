@@ -10,7 +10,6 @@ world.afterEvents.worldInitialize.subscribe(() => {
 
 world.afterEvents.itemUse.subscribe(({ source: player }) => {
     if (!(player instanceof Player)) return;
-    const item = iManager.get('XD');
-    const inv = player.getComponent('minecraft:inventory').container;
+    const item = iManager.get('XD'), inv = player.getComponent('minecraft:inventory').container;
     inv.addItem(item);
 })
