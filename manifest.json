@@ -1,0 +1,57 @@
+{
+  "format_version": 2,
+  "metadata": {
+    "authors": [
+      "gameza_src"
+    ],
+    "license": "MIT",
+    "url": "https://github.com/GalletaSRC/Bedrock-ItemStack-Database/tree/main"
+  },
+  "header": {
+    "name": "§cSRC ItemStack Database",
+    "description": "§7PRIV Pack by gameza_src, API Beta§r",
+    "min_engine_version": [
+      1,
+      19,
+      50
+    ],
+    "uuid": "961b45d1-d63c-4c8d-a008-02345bcc9034",
+    "version": [
+      1,
+      0,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "3d5fe08a-b5cf-4b98-99c8-9f51dfcdca9c",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "984f2666-01f4-4cab-85c2-da2519ce8edc",
+      "entry": "scripts/main.js",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.12.0-beta"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "1.2.0-beta"
+    }
+  ]
+}
