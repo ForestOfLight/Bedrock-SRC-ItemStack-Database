@@ -4,7 +4,7 @@ import ItemManager from "../main";
 const iManager = new ItemManager('myTable'), start = Date.now();
 world.afterEvents.worldInitialize.subscribe(() => {
     console.warn('Time to fully load: ' + (Date.now() - start) + 'ms');
-    iManager.save('XD', new ItemStack('minecraft:stone', 64));
+    iManager.set('XD', new ItemStack('minecraft:stone', 64));
     console.warn('Time to fully save an Item: ' + (Date.now() - start) + 'ms');
 });
 
