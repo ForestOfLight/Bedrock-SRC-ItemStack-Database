@@ -1,12 +1,11 @@
 /**
  * Author: @gameza_src on Discord
- * Item Manager
- * @version 1.0.0
- * @module ItemManager
+ * ItemStack Database for Minecraft Bedrock Edition
+ * @version 1.2.0
+ * @module SRCItemDatabase
  * @description This module is used for saving and getting an 
  * ItemStack in a Minecraft world using the world structure manager.
  */
-
 import {
     BlockVolume,
     EntityItemComponent,
@@ -14,7 +13,7 @@ import {
     StructureSaveMode,
     world
 } from "@minecraft/server";
-import { Vector } from "./lib/Vector.js";
+import { Vector } from './lib/Vector.js';
 
 
 /**
@@ -35,7 +34,7 @@ class AsyncQueue {
     * This method is used to enqueue an action
     * @param {Function} callback The callback to enqueue
     * @returns {void}
-    * @example ItemManager.enqueue(() => console.log('Hello World'))
+    * @example SRCItemDatabase.enqueue(() => console.log('Hello World'))
     */
     enqueue(callback) {
         this.queue.push(callback);
@@ -47,7 +46,7 @@ class AsyncQueue {
      * 
      * This method is used to dequeue an action
      * @returns {Promise<void>}
-     * @example ItemManager.dequeue()
+     * @example SRCItemDatabase.dequeue()
      * @remarks This method is called internally
      */
     async dequeue() {
@@ -65,35 +64,36 @@ class AsyncQueue {
         }
     };
 }
-// Crear una instancia global de AsyncQueue y un Map para guardar los itemStacks
+// Creates a global instance of AsyncQueue and a Map to store itemStacks
 const globalAsyncQueue = new AsyncQueue(), itemMemory = new Map();
 
 /**
- * This class is used for saving and getting an ItemStack
- * @version 1.0.0
+ * This class is used for saving or getting an ItemStack from the database
+ * @version 1.2.0
  * @class
- * @classdesc ItemManager allows for saving and retrieving ItemStacks in a Minecraft world using the world structure manager.
- * @example const iManager = new ItemManager('myTable');
+ * @classdesc SRCItemDatabase allows for saving and retrieving ItemStacks in a Minecraft world using the world structure manager.
+ * @remarks The default save mode is StructureSaveMode.World, and table name most be no more than 12 characters
+ * @example const iManager = new SRCItemDatabase('myTable');
  * iManager.save('1239483', new ItemStack('minecraft:stone', 64));
  * 
- * @example const iManager = new ItemManager('myTable', StructureSaveMode.Memory);
+ * @example const iManager = new SRCItemDatabase('myTable', StructureSaveMode.Memory);
  * iManager.save('1239483', new ItemStack('minecraft:stone', 64));
  * iManager.get('1239483').typeId;
  */
-class ItemManager {
+class SRCItemDatabase {
     /**
      * 
-     * @param {String} id The id of the Table to save the itemStack
+     * @param {String} table The name of the Table to save the itemStack
      * @param {StructureSaveMode} saveMode The mode of saving: StructureSaveMode.World or StructureSaveMode.Memory
-     * @example const iManager = new ItemManager(StructureSaveMode.Memory);
+     * @example const iManager = new SRCItemDatabase(StructureSaveMode.Memory);
      * @remarks The default save mode is StructureSaveMode.World
      * @remarks The save mode determines where the itemStack is saved in context of the Structure save mode
      */
-    constructor(id, saveMode = StructureSaveMode.World) {
+    constructor(table, saveMode = StructureSaveMode.World) {
         /**
-         * The id of the Table of this instance
+         * The name of the Table of this instance
          */
-        this.id = id + '_item:';
+        this.table = table + '_item:';
         /**
          * The save mode of this instance
          */
@@ -116,9 +116,13 @@ class ItemManager {
      */
     static dimension = world.getDimension('overworld');
     /**
-     * The init method to initialize the class and load the all itemStacks
+     * The init method to initialize the class and load the all itemStacks in the memory
+     * @returns {Promise<void>}
      */
     async init() {
+        const table = this.table.split('_')[0];
+        if (table.length > 12) 
+            throw new Error(`Initialization Error for table: "${table}": The provided table name can't be more than 12 characters. Length: ${table.length}.`);
         await this.load();
     }
     /**
@@ -127,13 +131,13 @@ class ItemManager {
      * @returns {Promise<void>}
      */
     async loadZone() {
-        const loc = ItemManager.location,
+        const loc = SRCItemDatabase.location,
             min = { x: loc.x - 1, y: loc.y - 1, z: loc.z - 1 }, max = { x: loc.x + 1, y: loc.y + 1, z: loc.z + 1 },
             airMin = { x: loc.x, y: loc.y, z: loc.z }, airMax = { x: loc.x, y: loc.y + 2, z: loc.z };
         const volume = new BlockVolume(min, max), volume2 = new BlockVolume(airMin, airMax);
-        await ItemManager.dimension.runCommand(`tickingarea add circle ${loc.x} ${loc.y} ${loc.z} 2 "idb" true`);
-        await ItemManager.dimension.fillBlocks(volume, 'minecraft:bedrock', { ignoreChunkBoundErrors: true });
-        await ItemManager.dimension.fillBlocks(volume2, 'minecraft:air', { ignoreChunkBoundErrors: true });
+        await SRCItemDatabase.dimension.runCommand(`tickingarea add circle ${loc.x} ${loc.y} ${loc.z} 2 "idb" true`);
+        await SRCItemDatabase.dimension.fillBlocks(volume, 'minecraft:bedrock', { ignoreChunkBoundErrors: true });
+        await SRCItemDatabase.dimension.fillBlocks(volume2, 'minecraft:air', { ignoreChunkBoundErrors: true });
     };
     /**
      * This method is used to load the itemStacks saved in the world
@@ -142,47 +146,42 @@ class ItemManager {
     async load() {
         await this.loadZone();
         await this.asyncQueue.enqueue(async () => {
-            console.warn('Loading itemStacks... 5');
-            const iDs = this.getAllIds();
-            if (iDs.length === 0) return;
-            console.warn('Loading itemStacks... 4');
-            for (const id of iDs) {
-                console.warn('Loading itemStacks... 3');
-                const item = await this.getAsync(id);
-                console.warn('Loading itemStacks... 2');
+            const keys = this.getAllKeys();
+            if (keys.length === 0) return;
+            for (const key of keys) {
+                const item = await this.getAsync(key);
                 if (item) {
-                    itemMemory.set(this.id + id, item);
-                    console.warn('Loading itemStacks... 1');
+                    itemMemory.set(this.table + key, item);
                 }
             }
         });
     }
     /**
      * This method is used to get an itemStack from memory 
-     * @param {String} id The id of the itemStack
+     * @param {String} key The key of the itemStack
      * @returns {ItemStack} The itemStack from memory if it exists
      */
-    get(id) {
-        const item = itemMemory.get(this.id + id)
+    get(key) {
+        const item = itemMemory.get(this.table + key)
         return item ? item : undefined;
     };
     /**
      * This method is used to save an itemStack
-     * @param {String} id The id of the itemStack
+     * @param {String} key The key of the itemStack
      * @param {ItemStack} itemStack The itemStack to save
      * @returns {Promise<Boolean>} True if the itemStack was saved successfully
+     * @remarks The key most not be more than 12 characters
      */
-    async save(id, itemStack) {
+    async set(key, itemStack) {
+        if (key.length > 12) 
+            throw new Error(`The provided key "${key}" exceeds the maximum allowed length of 12 characters (actual length: ${key.length}).`);
         return new Promise(resolve => {
             this.asyncQueue.enqueue(async () => {
-                const newId = this.id + id, existingStructure = await world.structureManager.get(newId);
-                if (existingStructure) {
-                    console.warn(`Structure with identifier '${newId}' already exists.`);
-                    return resolve(false);
-                }
-                const location = ItemManager.location,
-                    newItem = ItemManager.dimension.spawnItem(itemStack, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
-                await world.structureManager.createFromWorld(newId, ItemManager.dimension, location, location,
+                const newId = this.table + key, existingStructure = await world.structureManager.get(newId);
+                if (existingStructure) { await world.structureManager.delete(newId); itemMemory.delete(newId) };
+                const location = SRCItemDatabase.location,
+                 newItem = SRCItemDatabase.dimension.spawnItem(itemStack, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
+                await world.structureManager.createFromWorld(newId, SRCItemDatabase.dimension, location, location,
                     { includeEntities: true, includeBlocks: false, saveMode: this.saveMode });
                 const item = newItem.getComponent(EntityItemComponent.componentId).itemStack;
                 itemMemory.set(newId, item)
@@ -193,103 +192,100 @@ class ItemManager {
     };
     /**
      * This method is used to save many itemStacks
-     * @param {Array<{ id: String, item: ItemStack }>} items The items to save in the world
+     * @param {Array<{ key: String, item: ItemStack }>} items The items to save in the world
      * @returns {Promise<Boolean>} True if the itemStacks were saved successfully
      */
-    async saveMany(items) { return Promise.all(items.map(item => this.save(item.id, item.item))) };
+    async setMany(items) { return Promise.all(items.map(item => this.set(item.key, item.item))) };
     /**
      * This method is used to get an itemStack
-     * @param {String} id The id of the itemStack
+     * @param {String} key The key of the itemStack
      * @returns {ItemStack} The itemStack
      */
-    async getAsync(id) {
-        const newId = this.id + id, location = ItemManager.location, structure = await world.structureManager.get(newId);
+    async getAsync(key) {
+        const newId = this.table + key, location = SRCItemDatabase.location, structure = await world.structureManager.get(newId);
         if (!structure) return undefined;
-        await world.structureManager.place(newId, ItemManager.dimension, location, { includeBlocks: false, includeEntities: true });
-        const item = ItemManager.dimension.getEntities({ closest: 1, type: 'minecraft:item', location: location, maxDistance: 3 })[0];
+        await world.structureManager.place(newId, SRCItemDatabase.dimension, location, { includeBlocks: false, includeEntities: true });
+        const item = SRCItemDatabase.dimension.getEntities({ closest: 1, type: 'minecraft:item', location: location, maxDistance: 3 })[0];
         if (!item) return undefined;
         const itemStack = item.getComponent(EntityItemComponent.componentId).itemStack;
         item.remove();
         return itemStack;
     };
-
     /**
      * 
      * This method is for getting an itemStack only once, then it will be deleted
-     * @param {String} id The id of the itemStack to get
+     * @param {String} key The key of the itemStack to get
      * @returns {Promise<ItemStack>} The itemStack
      */
-    getOnce(id) {
-        const item = this.get(id);
-        this.delete(id);
+    getOnce(key) {
+        const item = this.get(key);
+        this.delete(key);
         return item;
     };
     /**
      * This method is used to get many itemStacks from the world
-     * @param {Array<String>} ids The ids of the itemStacks
+     * @param {Array<String>} keys The keys of the itemStacks
      * @returns {Promise<ItemStack[]>} Array of itemStacks
      */
-    async getManyAsync(ids) { return Promise.all(ids.map(id => this.get(id))) };
+    async getManyAsync(keys) { return Promise.all(keys.map(key => this.get(key))) };
     /**
      * This method is used to get many itemStacks from the memory
-     * @param {Array<String>} ids The ids of the itemStacks
+     * @param {Array<String>} keys The keys of the itemStacks
      * @returns {ItemStack[]} Array of itemStacks
      */
-    getMany(ids) { return ids.map(id => this.get(id)) };
+    getMany(keys) { return keys.map(key => this.get(key)) };
     /**
      * This method is used to delete an itemStack
-     * @param {String} id The id of the itemStack to delete
+     * @param {String} key The key of the itemStack to delete
      * @returns {Boolean} True if the itemStack was deleted successfully
      */
-    delete(id) {
-        const deleted = world.structureManager.delete(this.id + id)
-        itemMemory.delete(this.id + id);
+    delete(key) {
+        const deleted = world.structureManager.delete(this.table + key)
+        itemMemory.delete(this.table + key);
         return deleted;
     };
     /**
      * This method is used to delete many itemStacks
-     * @param {Array<String>} ids The ids of the itemStacks to delete
+     * @param {Array<String>} keys The keys of the itemStacks to delete
      * @returns {void}
      */
-    deleteMany(ids) { return ids.forEach(id => this.delete(id)) };
+    deleteMany(keys) { return keys.forEach(key => this.delete(key)) };
     /**
      * This method is used to delete all itemStacks saved in the world
      * @returns {Boolean} True if all itemStacks were deleted successfully
      */
     deleteAll() {
-        this.getAllIds().forEach(id => this.delete(id));
+        this.getAllKeys().forEach(key => this.delete(key));
         return true;
     };
     /**
      * This method is used to check if an itemStack exists in the memory
-     * @param {String} id The id of the itemStack to check
+     * @param {String} key The key of the itemStack to check
      * @returns {Boolean} True if the itemStack exists in the memory
      */
-    hasItem(id) { return itemMemory.has(this.id + id) };
+    has(key) { return itemMemory.has(this.table + key) };
     /**
      * This method is used to check if an itemStack exists
-     * @param {String} id The id of the itemStack
+     * @param {String} key The key of the itemStack
      * @returns {Boolean} True if the itemStack exists
      */
-    hasItemAsync(id) { return world.structureManager.get(this.id + id) ? true : false };
+    hasAsync(key) { return world.structureManager.get(this.table + key) ? true : false };
     /**
      * This method is used to get all itemStack ids saved in the world
      * @returns {String[]} All itemStack ids saved in the world
      */
-    getAllIds() { return world.structureManager.getWorldStructureIds().filter(id => id.startsWith(this.id)).map(id => id.split(':')[1]) };
-    /**
-     * This method is used to get all itemStacks saved in the world
-     * @returns {Promise<ItemStack[]>} All itemStacks saved in the world
-     */
-    async getAllItemsAsync() { return Promise.all(this.getAllIds().map(id => this.getAsync(id))) };
+    getAllKeys() { return world.structureManager.getWorldStructureIds().filter(key => key.startsWith(this.table)).map(key => key.split(':')[1]) };
     /**
      * This method is used to get all itemStacks saved in the memory
      * @returns {ItemStack[]} All itemStacks saved in the memory
-     * Returns all the items fro the table this.id
+     * Returns all the items from the table
      */
-    getAllItems() { return this.getAllIds().map(id => this.get(id)) };
+    getAll() { return this.getAllKeys().map(key => this.get(key)) };
+    /**
+     * This method is used to get all itemStacks saved in the memory asynchronously
+     * @returns {Promise<ItemStack[]>} All itemStacks saved in the memory
+     * Returns all the items from the table
+     */
+    getAllAsync() { return Promise.all(this.getAllKeys().map(key => this.get(key))) };
 }
-export default ItemManager;
-
-
-import('./Tests/test.js');
+export default SRCItemDatabase;
