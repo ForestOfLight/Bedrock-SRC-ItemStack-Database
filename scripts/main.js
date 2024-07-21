@@ -64,7 +64,7 @@ class AsyncQueue {
         }
     };
 }
-// Creates a global instance of AsyncQueue and a Map to store itemStacks
+// Create a global AsyncQueue and a Map to store the itemStacks
 const globalAsyncQueue = new AsyncQueue(), itemMemory = new Map();
 
 /**
@@ -121,7 +121,7 @@ class SRCItemDatabase {
      */
     async init() {
         const table = this.table.split('_')[0];
-        if (table.length > 12) 
+        if (table.length > 12)
             throw new Error(`Initialization Error for table: "${table}": The provided table name can't be more than 12 characters. Length: ${table.length}.`);
         await this.load();
     }
@@ -173,14 +173,14 @@ class SRCItemDatabase {
      * @remarks The key most not be more than 12 characters
      */
     async set(key, itemStack) {
-        if (key.length > 12) 
+        if (key.length > 12)
             throw new Error(`The provided key "${key}" exceeds the maximum allowed length of 12 characters (actual length: ${key.length}).`);
         return new Promise(resolve => {
             this.asyncQueue.enqueue(async () => {
                 const newId = this.table + key, existingStructure = await world.structureManager.get(newId);
                 if (existingStructure) { await world.structureManager.delete(newId); itemMemory.delete(newId) };
                 const location = SRCItemDatabase.location,
-                 newItem = SRCItemDatabase.dimension.spawnItem(itemStack, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
+                    newItem = SRCItemDatabase.dimension.spawnItem(itemStack, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
                 await world.structureManager.createFromWorld(newId, SRCItemDatabase.dimension, location, location,
                     { includeEntities: true, includeBlocks: false, saveMode: this.saveMode });
                 const item = newItem.getComponent(EntityItemComponent.componentId).itemStack;
@@ -287,5 +287,58 @@ class SRCItemDatabase {
      * Returns all the items from the table
      */
     getAllAsync() { return Promise.all(this.getAllKeys().map(key => this.get(key))) };
+    /**
+     * 
+     * This method is used to save an many itemStacks in a single key
+     * @param {String} key 
+     * @param {Array<ItemStack>} items 
+     * @returns {void}
+     * @example iManager.saveItems('myItems', [new ItemStack('minecraft:stone', 64), new ItemStack('minecraft:diamond', 32)])
+     * @remarks This method may have errors.
+     */
+    saveItems(key, items) {
+        if (key.length > 12)
+            throw new Error(`The provided key "${key}" exceeds the maximum allowed length of 12 characters (actual length: ${key.length}).`);
+        return new Promise(resolve => {
+            this.asyncQueue.enqueue(async () => {
+                const newId = this.table + key, existingStructure = await world.structureManager.get(newId);
+                if (existingStructure) { await world.structureManager.delete(newId); itemMemory.delete(newId) };
+                const location = SRCItemDatabase.location;
+                for (let item of items) SRCItemDatabase.dimension.spawnItem(item, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
+                await world.structureManager.createFromWorld(newId, SRCItemDatabase.dimension, location, location,
+                    { includeEntities: true, includeBlocks: false, saveMode: this.saveMode });
+                itemMemory.set(newId, items)
+                resolve(true);
+            });
+        });
+    }
+    /**
+     * 
+     * This method is used to get many itemStacks saved in a single key
+     * @param {String} key The key of the itemStacks 
+     * @returns {ItemStack[]} The itemStacks
+     * @example iManager.getItems('myItems')
+     * @remarks This method may have errors.
+     */
+    getItems(key) {
+        if (key.length > 12)
+            throw new Error(`The provided key "${key}" exceeds the maximum allowed length of 12 characters (actual length: ${key.length}).`);
+        const itemsS = itemMemory.get(this.table + key)
+        if (!itemsS) return [];
+        if (!world.structureManager.get(this.table + key)) return [];
+        const location = SRCItemDatabase.location;
+        world.structureManager.place(newId, SRCItemDatabase.dimension, location, { includeBlocks: false, includeEntities: true });
+        const items = SRCItemDatabase.dimension.getEntities({ closest: 1, type: 'minecraft:item', location: location, maxDistance: 3 });
+        if (items.length === 0) return undefined;
+        const itemStacksArray = [];
+        for (const item of items) {
+            const itemStack = item.getComponent(EntityItemComponent.componentId).itemStack;
+            itemStacksArray.push(itemStack);
+            item.remove();
+        }
+        itemMemory.set(this.table + key, itemStacksArray)
+        return itemStacksArray;
+
+    };
 }
 export default SRCItemDatabase;
