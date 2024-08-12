@@ -1,7 +1,7 @@
 /**
  * Author: @gameza_src on Discord
  * ItemStack Database for Minecraft Bedrock Edition
- * @version 1.2.0
+ * @version 1.3.0
  * @module SRCItemDatabase
  * @description This module is used for saving and getting an 
  * ItemStack in a Minecraft world using the world structure manager.
@@ -69,23 +69,25 @@ const globalAsyncQueue = new AsyncQueue(), itemMemory = new Map();
 
 /**
  * This class is used for saving or getting an ItemStack from the database
- * @version 1.2.0
+ * @version 1.3.0
  * @class
  * @classdesc SRCItemDatabase allows for saving and retrieving ItemStacks in a Minecraft world using the world structure manager.
  * @remarks The default save mode is StructureSaveMode.World, and table name most be no more than 12 characters
- * @example const iManager = new SRCItemDatabase('myTable');
- * iManager.save('1239483', new ItemStack('minecraft:stone', 64));
+ * @example let IManager;
+ * world.afterEvents.worldInitialize.subscribe(() => system.runTimeout(() => IManager = new ItemManager('myTable'), 200));
+ * IManager.save('1239483', new ItemStack('minecraft:stone', 64));
  * 
- * @example const iManager = new SRCItemDatabase('myTable', StructureSaveMode.Memory);
- * iManager.save('1239483', new ItemStack('minecraft:stone', 64));
- * iManager.get('1239483').typeId;
+ * @example let IManager;
+ * world.afterEvents.worldInitialize.subscribe(() => system.runTimeout(() => IManager = new ItemManager('myTable', StructureSaveMode.Memory), 200));
+ * IManager.save('1239483', new ItemStack('minecraft:stone', 64));
+ * IManager.get('1239483').typeId;
  */
 class SRCItemDatabase {
     /**
      * 
      * @param {String} table The name of the Table to save the itemStack
      * @param {StructureSaveMode} saveMode The mode of saving: StructureSaveMode.World or StructureSaveMode.Memory
-     * @example const iManager = new SRCItemDatabase(StructureSaveMode.Memory);
+     * @example new SRCItemDatabase('myTable', StructureSaveMode.Memory);
      * @remarks The default save mode is StructureSaveMode.World
      * @remarks The save mode determines where the itemStack is saved in context of the Structure save mode
      */
@@ -254,7 +256,7 @@ class SRCItemDatabase {
      * This method is used to delete all itemStacks saved in the world
      * @returns {Boolean} True if all itemStacks were deleted successfully
      */
-    deleteAll() {
+    clear() {
         this.getAllKeys().forEach(key => this.delete(key));
         return true;
     };
@@ -323,9 +325,9 @@ class SRCItemDatabase {
     getItems(key) {
         if (key.length > 12)
             throw new Error(`The provided key "${key}" exceeds the maximum allowed length of 12 characters (actual length: ${key.length}).`);
-        const itemsS = itemMemory.get(this.table + key)
+        const newId = this.table + key, itemsS = itemMemory.get(newId)
         if (!itemsS) return [];
-        if (!world.structureManager.get(this.table + key)) return [];
+        if (!world.structureManager.get(newId)) return [];
         const location = SRCItemDatabase.location;
         world.structureManager.place(newId, SRCItemDatabase.dimension, location, { includeBlocks: false, includeEntities: true });
         const items = SRCItemDatabase.dimension.getEntities({ closest: 1, type: 'minecraft:item', location: location, maxDistance: 3 });
@@ -336,9 +338,8 @@ class SRCItemDatabase {
             itemStacksArray.push(itemStack);
             item.remove();
         }
-        itemMemory.set(this.table + key, itemStacksArray)
+        itemMemory.set(newId, itemStacksArray)
         return itemStacksArray;
-
     };
 }
 export default SRCItemDatabase;
