@@ -9,7 +9,7 @@
   },
   "header": {
     "name": "§cSRC ItemStack Database",
-    "description": "§7PRIV Pack by gameza_src, API Beta§r",
+    "description": "§7Pack by gameza_src, API Beta§r",
     "min_engine_version": [
       1,
       19,
@@ -18,7 +18,7 @@
     "uuid": "961b45d1-d63c-4c8d-a008-02345bcc9034",
     "version": [
       1,
-      0,
+      3,
       0
     ]
   },
@@ -48,10 +48,6 @@
     {
       "module_name": "@minecraft/server",
       "version": "1.12.0-beta"
-    },
-    {
-      "module_name": "@minecraft/server-ui",
-      "version": "1.2.0-beta"
     }
   ]
 }
