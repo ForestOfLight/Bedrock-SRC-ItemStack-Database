@@ -186,7 +186,7 @@ class SRCItemDatabase {
                 world.structureManager.delete(newId);
                 itemMemory.delete(newId)
             };
-            newItem = SRCItemDatabase.dimension.spawnItem(itemStack, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
+           const newItem = SRCItemDatabase.dimension.spawnItem(itemStack, { x: location.x + 0.5, y: location.y, z: location.z + 0.5 });
             world.structureManager.createFromWorld(newId, SRCItemDatabase.dimension, location, location, {
                 includeEntities: true,
                 includeBlocks: false,
