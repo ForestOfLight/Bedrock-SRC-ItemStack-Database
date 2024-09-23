@@ -19,9 +19,7 @@ import { Vector } from './lib/Vector.js';
 
 class AsyncQueue {
     constructor() {
-        /**@type { Function[] } */
         this.queue = [];
-        /**@type { Boolean } */
         this.processing = false;
     }
     enqueue(callback) {
