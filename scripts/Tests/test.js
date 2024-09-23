@@ -1,5 +1,5 @@
 import { Player, world, ItemStack } from "@minecraft/server";
-import ItemManager from "../main";
+import ItemManager from "../ItemDatabase";
 
 /**
  * 
