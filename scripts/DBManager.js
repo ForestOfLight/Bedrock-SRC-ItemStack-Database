@@ -1,3 +1,4 @@
+import { world } from "@minecraft/server";
 import Database from "./Database";
 
 class DatabaseManager {
@@ -16,4 +17,7 @@ class DatabaseManager {
  * @example
  * Databases.config.get('key')
  */
-export const Databases = new DatabaseManager();
+export let Databases;
+world.afterEvents.worldLoad.subscribe(() => {
+    Databases = new DatabaseManager();
+});

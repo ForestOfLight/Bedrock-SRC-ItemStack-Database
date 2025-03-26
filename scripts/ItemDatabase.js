@@ -32,16 +32,19 @@ class AsyncQueue {
         }
     } 
 }
-const globalAsyncQueue = new AsyncQueue(), itemMemory = new Map();
+let globalAsyncQueue, itemMemory
+world.afterEvents.worldLoad.subscribe(() => {
+    globalAsyncQueue = new AsyncQueue(), itemMemory = new Map();
+});
 class SRCItemDatabase {
     constructor(table, saveMode = StructureSaveMode.World) {
+        SRCItemDatabase.dimension = world.getDimension('overworld');
         this.table = table + '_item:';
         this.saveMode = saveMode;
         this.asyncQueue = globalAsyncQueue;
         this.init();
     }
     static location = new Vector(1000000, -50, 1000000);
-    static dimension = world.getDimension('overworld');
     async init() {
         const table = this.table.split('_')[0];
         if (table.length > 12)
@@ -53,7 +56,7 @@ class SRCItemDatabase {
             min = { x: loc.x - 1, y: loc.y - 1, z: loc.z - 1 }, max = { x: loc.x + 1, y: loc.y + 1, z: loc.z + 1 },
             airMin = { x: loc.x, y: loc.y, z: loc.z }, airMax = { x: loc.x, y: loc.y + 2, z: loc.z },
             volume = new BlockVolume(min, max), volume2 = new BlockVolume(airMin, airMax);
-        await SRCItemDatabase.dimension.runCommandAsync(`tickingarea add circle ${loc.x} ${loc.y} ${loc.z} 2 "idb" true`);
+        SRCItemDatabase.dimension.runCommand(`tickingarea add circle ${loc.x} ${loc.y} ${loc.z} 2 "idb" true`);
         SRCItemDatabase.dimension.fillBlocks(volume, 'minecraft:bedrock', { ignoreChunkBoundErrors: true });
         SRCItemDatabase.dimension.fillBlocks(volume2, 'minecraft:air', { ignoreChunkBoundErrors: true });
     };
